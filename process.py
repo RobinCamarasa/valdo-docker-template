@@ -6,6 +6,7 @@ from evalutils import SegmentationAlgorithm
 from evalutils.validators import UniqueImagesValidator
 
 # added imports
+import tensorflow as tf
 from typing import Tuple, List
 from pathlib import Path
 import re
@@ -15,11 +16,10 @@ from evalutils.io import (ImageLoader, SimpleITKLoader)
 
 
 # TODO change teamname to actual teamname
-class TeamName(SegmentationAlgorithm):
+class Findpvs(SegmentationAlgorithm):
     def __init__(self):
         # TODO change to required input modalities for your method
-        self.input_modalities = [None]
-        self.first_modality = self.input_modalities[0]
+        self.input_modalities = ['T1', 'T2', 'FLAIR']
 
         # TODO indicate if uncertainty map should be saved
         self.flag_save_uncertainty = None
@@ -33,11 +33,21 @@ class TeamName(SegmentationAlgorithm):
                           re.compile("/input/sub-.*_space-.*_desc-masked_%s.nii.gz" % self.first_modality)}
         )
 
+        self.first_modality = self.input_modalities[0]
 
         print("==> Initializing model")
 
         # --> Load model
         # TODO add code to load model
+
+        json_file = open(architecture_path, 'r')
+        unet_layers = json_file.read()
+        json_file.close()
+
+        self.model = tf.keras.models.model_from_json(unet_layers)
+        self.model.load_weights(weights_path)
+        self.model = tf.keras.models.model_from_json(unet_layers)
+        self.model.load_weights(weights_path)
 
         print("==> Model loaded")
 
@@ -116,12 +126,66 @@ class TeamName(SegmentationAlgorithm):
 
         # TODO add code to apply method to input image and output a prediction (and an uncertainty map for task 3 lac)
 
+        input_list = []
+
+        for img in input_images:
+            # image to numpy array
+            image = SimpleITK.GetArrayFromImage(img)
+            print('Image shape:')
+            print(image.shape)
+
+            # --> Preprocess image
+            image = np.array(image, dtype=np.float32)
+
+            # normalize image (rescale)
+            min_data = np.amin(image)
+            max_data = np.amax(image)
+            image = (image - min_data) * 1. / (max_data - min_data)
+
+            # convert (z,y,x) to (x,y,z)
+            image = np.moveaxis(image, [0, 2], [2, 0])
+            print('Image shape after conversion:')
+            print(image.shape)
+
+            # add batch axis and channel axis (at front and end for tensorflow)
+            image = np.expand_dims(np.expand_dims(image, axis=-1), axis=0)
+            input_list.append(image)
+
+        # In TF the last axis contains the channels
+        input_channels = np.concatenate(input_list, axis=-1)
+
+        # --> Apply NN on image
+        out = np.squeeze(self.model.predict(input_channels, batch_size=1, verbose=1))
+        print('Image shape prediction:')
+        print(out.shape)
+
+        # --> Postproc prediction
+        # convert numpy array to SimpleITK image again for saving
+        out_list = []
+
+        # TODO change, see comments
+        out_images = [out]
+        #  For Task 1 PVS or Task 2 MB: list should contain only the predicted segmentation: [out]
+        # out_images = [pred]
+        #  For Task 3 Lacunes: list should contain the predicted segmentation and the uncertainty map (in that order!)
+        # out_images = [pred, uncertaintymap]
+
+        for outimg in out_images:
+            outimg = np.moveaxis(outimg, [0, 2], [2, 0])
+            print('Image shape before saving:')
+            print(outimg.shape)
+            out_itk = SimpleITK.GetImageFromArray(outimg)
+            out_itk.CopyInformation(input_images[0])
+            assert len(out_itk.GetSize()) == len(input_images[0].GetSize()), "Error, output image should have the" \
+                                                                             " same shape as the input image(s)!"
+            out_list.append(out_itk)
+
         print("==> Prediction done")
 
         # TODO Return a list with a prediction (and an uncertainty map for task 3 lac, the order is important!)
-        return None
+        return out_list
 
 
 if __name__ == "__main__":
     # TODO change teamname to actual teamname
-    TeamName().process()
+    Findpvs().process()
