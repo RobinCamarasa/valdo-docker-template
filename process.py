@@ -10,13 +10,10 @@ from typing import Tuple, List
 from pathlib import Path
 import re
 #TODO add imports
-<<<<<<< HEAD
-=======
 import torch
 import monai
 from scipy.special import expit
 from skimage import transform
->>>>>>> 7c6c039 (Added pytorch example code)
 
 from evalutils.io import (ImageLoader, SimpleITKLoader)
 
@@ -54,7 +51,7 @@ class ValdoTorch(SegmentationAlgorithm):
             dimensions=3,
             in_channels=3,
             out_channels=1,
-            channels=(16, 32, 64, 128, 256),
+            channels=(8, 16, 32, 64, 128),
             strides=(2, 2, 2, 2),
             num_res_units=2,
         ).to(self.device)
@@ -150,6 +147,7 @@ class ValdoTorch(SegmentationAlgorithm):
 
             # --> Preprocess image
             image = np.array(image, dtype=np.float32)
+            input_shape = image.shape
 
             # normalize image (rescale)
             min_data = np.amin(image)
@@ -166,7 +164,9 @@ class ValdoTorch(SegmentationAlgorithm):
         # concatenate images
         input_channels = np.concatenate(input_list, axis=0)
         # add batch axis and channel axis (at front for pytorch)
-        image = torch.from_numpy(image).to(self.device).reshape(1, 3, 512, 512, 192)
+        image = torch.from_numpy(input_channels).to(self.device).reshape(
+            1, 3, 512, 512, 192
+            )
 
         # --> Apply NN on image
         # Do the forward pass
@@ -176,6 +176,7 @@ class ValdoTorch(SegmentationAlgorithm):
 
         # --> Postproc prediction
         # convert numpy array to SimpleITK image again for saving
+        out = transform.resize(out, input_shape, order=3)  # resize all images to 512 x 512 x 192 in shape
         out_list = []
 
         # TODO change, see comments
@@ -186,7 +187,7 @@ class ValdoTorch(SegmentationAlgorithm):
         # out_images = [pred, uncertaintymap]
 
         for outimg in out_images:
-            outimg = np.moveaxis(outimg, [0, 2], [2, 0])
+            # outimg = np.moveaxis(outimg, [0, 2], [2, 0])
             print('Image shape before saving:')
             print(outimg.shape)
             # Convert numpy array to SimpleITK image for eval utils framework

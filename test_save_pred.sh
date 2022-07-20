@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
-
-SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+rm -rf images
+rm -rf output
 
 ./build.sh
 
-docker run --rm --runtime nvidia --memory=10g --gpus="device=0" \
-       -v ${SCRIPTPATH}/test/:/input/ -v ${SCRIPTPATH}/output/:/output/ \
-       -u $UID:$GROUPS valdotorch
-       #TODO change teamname to actual teamname
-       #TODO if your method does not need a gpu, remove --gpus="device=0". If it does need a gpu, make sure you installed the nvidia container toolkit before running your docker (see: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+INPUT_PATH="$(realpath test)"
+OUTPUT_PATH="$(realpath output)"
+SIF_PATH="image.sif"
 
-docker run --rm \
-        -v ${SCRIPTPATH}/output/:/output/ \
-        -v ${SCRIPTPATH}/test/:/input/ \
-        -u $UID:$GROUPS python:3.7-slim python -c "import json, sys; f1 = json.load(open('/output/results.json')); f2 = json.load(open('/input/expected_output.json')); sys.exit(f1 != f2);"
+singularity exec --nv --net --network=none --no-home -B "${INPUT_PATH}":/input/:'ro' -B "${OUTPUT_PATH}":/output/:'rw' "${SIF_PATH}" python /home/process.py
+
+singularity exec -B "${INPUT_PATH}:/input/:ro" -B "${OUTPUT_PATH}:/output/:ro" docker://python:3.7-slim python -c "import json, sys; f1 = json.load(open('/output/results.json')); f2 = json.load(open('/input/expected_output.json')); sys.exit(f1 != f2)"
 
 if [ $? -eq 0 ]; then
     echo "Tests successfully passed..."

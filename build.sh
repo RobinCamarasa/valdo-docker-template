@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
 #TODO change teamname to actual teamname
-docker build -t valdotorch "$SCRIPTPATH"
+# The --fakeroot option is necessary for the creation to be able to run this file as a simple user
+singularity build --fakeroot image.sif Singularity
