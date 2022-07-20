@@ -1,12 +1,12 @@
 # valdo-docker-example
 
-PyTorch Example for the [Where is VALDO challenge](https://valdo.grand-challenge.org/)
+PyTorch Example for the [Where is VALDO challenge](https://valdo.grand-challenge.org/).
 
-We are currently modifying the submission method from [docker](https://www.docker.com/) to [singularity](https://docs.sylabs.io/guides/3.5/user-guide/introduction.html)
 
 | :warning: WARNING          |
 |:---------------------------|
-| This is the first working example of the configuration with Singularity. This is still working example feel free to contact [Robin Camarasa](mailto:r.camarasa@erasmusmc.nl) if you encounter any issue while building and/or testing the singularity container. |
+| We are currently modifying the submission method from [docker](https://www.docker.com/) to [singularity](https://docs.sylabs.io/guides/3.5/user-guide/introduction.html). This is the first working example of the configuration with Singularity however it lacks some documentation. If you encounter any issue while building and/or testing your singularity container or have any question concerning this working example feel free to contact [Robin Camarasa](mailto:r.camarasa@erasmusmc.nl). |
+
 
 
 # ValdoTorch Algorithm
